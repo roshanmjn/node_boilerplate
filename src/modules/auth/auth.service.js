@@ -1,9 +1,7 @@
 const httpStatus = require("http-status");
 const { HttpException } = require("../../middlewares/errors.js");
 const { dbConnection } = require("../../config/connection.js");
-const { OAuth2Client } = require("google-auth-library");
 const { sendVerificationEmail } = require("../../utils/contact.js");
-const { getEmails } = require("../email/email.service.js");
 require("dotenv").config();
 
 const {
@@ -17,7 +15,6 @@ const {
     jwtRefreshSign,
     jwtResetVerifyDecode,
 } = require("../../utils/encrypter.js");
-const { decode } = require("jsonwebtoken");
 
 const login = async (email, password) => {
     try {
@@ -79,8 +76,6 @@ const login = async (email, password) => {
             last_name: decoded.last_name,
             email: decoded.email,
         });
-        const emailAddresses = await getEmails(accessToken);
-        console.log(emailAddresses);
 
         return {
             id: decoded.id,
@@ -90,7 +85,6 @@ const login = async (email, password) => {
             image: findUser[0].image,
             token: accessToken,
             refreshToken: refreshToken,
-            emailAddresses: emailAddresses.length === 1 && emailAddresses[0].email === null && emailAddresses[0].default === false ? [] : emailAddresses,
         };
     } catch (error) {
         console.error("Error during login:", error);
@@ -237,143 +231,6 @@ const logout = async (refreshToken) => {
     }
 };
 
-const googleAuth = async (credential) => {
-    try {
-        console.log(credential);
-
-        const client = new OAuth2Client(process.env.CLIENT_ID);
-        const ticket = await client.verifyIdToken({
-            idToken: credential,
-            audience: process.env.CLIENT_ID,
-        });
-
-        const payload = ticket.payload;
-        // console.log(payload);
-
-        const conn = await dbConnection;
-        let query = "SELECT * FROM users WHERE email = ?";
-        const [findUser] = await conn.query(query, [btoa(encodeURIComponent(payload.email))]);
-
-        let decoded;
-
-        if (findUser && findUser.length > 0) {
-            // User exists, update information
-            decoded = decodeBase64Values({
-                id: findUser[0].id,
-                first_name: findUser[0].first_name,
-                last_name: findUser[0].last_name,
-                email: findUser[0].email,
-                google_id: findUser[0].google_id,
-                token: findUser[0].token,
-            });
-
-            const refreshToken = jwtRefreshSign({
-                id: decoded.id,
-                first_name: decoded.first_name,
-                last_name: decoded.last_name,
-                email: decoded.email,
-            });
-            // Encode refresh token
-            const token = btoa(encodeURIComponent(refreshToken));
-
-            // Store the refresh token in the database
-            const updateQuery = "UPDATE users SET token = ? WHERE id = ?";
-            const [updateResult] = await conn.query(updateQuery, [token, decoded.id]);
-
-            if (updateResult.affectedRows !== 1) {
-                console.error("Failed to save the refresh token. No rows were affected.");
-                throw new HttpException(httpStatus.BAD_REQUEST, "Failed to save the refresh token.");
-            }
-
-            return {
-                id: decoded.id,
-                first_name: decoded.first_name,
-                last_name: decoded.last_name,
-                email: decoded.email,
-                token: jwtSign({
-                    id: decoded.id,
-                    first_name: decoded.first_name,
-                    last_name: decoded.last_name,
-                    email: decoded.email,
-                }),
-                refreshToken: refreshToken,
-            };
-        } else {
-            // User does not exist, create a new user
-            const refreshToken = jwtRefreshSign({
-                id: payload.sub,
-                first_name: payload.given_name,
-                last_name: payload.family_name,
-                email: payload.email,
-            });
-
-            const encoded_first_name = btoa(encodeURIComponent(payload.given_name));
-            const encoded_last_name = btoa(encodeURIComponent(payload.family_name));
-            const encoded_email = btoa(encodeURIComponent(payload.email));
-            const encoded_google_id = payload.sub;
-            const hashed_password = await encrypt(payload.sub);
-            const image = btoa(encodeURIComponent(payload.picture));
-            const encoded_token = btoa(encodeURIComponent(refreshToken));
-            const is_admin = false;
-
-            query = `INSERT INTO users
-                (first_name,last_name,email,
-                google_id,password,
-                image,token,is_admin,created_at)
-                VALUES
-                (?,?,?,?,?,?,?,?,NOW())`;
-
-            const [user] = await conn.query(query, [
-                encoded_first_name,
-                encoded_last_name,
-                encoded_email,
-                encoded_google_id,
-                hashed_password,
-                image,
-                encoded_token,
-                is_admin,
-            ]);
-            // console.log(user);
-
-            if (user.affectedRows !== 1) {
-                console.error("Failed to create a new user. No rows were affected.");
-                throw new HttpException(httpStatus.BAD_REQUEST, "Failed to create a new user.");
-            }
-
-            let queryy = "SELECT * FROM users WHERE email = ?";
-            const [findUser] = await conn.query(queryy, [btoa(encodeURIComponent(payload.email))]);
-
-            decoded = decodeBase64Values({
-                id: findUser[0].id,
-                first_name: findUser[0].first_name,
-                last_name: findUser[0].last_name,
-                email: findUser[0].email,
-                google_id: findUser[0].google_id,
-                token: findUser[0].token,
-            });
-        }
-
-        // Generate refresh token
-        refreshToken;
-        return {
-            id: decoded.id,
-            first_name: decoded.first_name,
-            last_name: decoded.last_name,
-            email: decoded.email,
-            token: jwtSign({
-                id: decoded.id,
-                first_name: decoded.first_name,
-                last_name: decoded.last_name,
-                email: decoded.email,
-            }),
-            refreshToken: decoded.token,
-        };
-    } catch (error) {
-        console.error("Error during login:", error);
-        throw new HttpException(httpStatus.BAD_REQUEST, "Failed to save the refresh token.");
-    }
-};
-
 const forgotPassword = async (email) => {
     try {
         const conn = await dbConnection;
@@ -503,10 +360,9 @@ const verifyEmailToken = async (token) => {
 
 module.exports = {
     login,
-    googleAuth,
+    refreshAuth,
     logout,
     forgotPassword,
-    refreshAuth,
     resetPassword,
     verifyEmailToken,
 };

@@ -49,10 +49,10 @@ const jwtDecode = (token, secret) => {
         throw new HttpException(401, "Failed to decode JWT");
     }
 };
-const jwtAccessTokenSign = (data, expiresIn = "7d") => {
+const jwtAccessTokenSign = (data) => {
     try {
-        const options = { expiresIn };
-        return jwt.sign(data, process.env.JWT_SECRET_REFRESH, options);
+        const options = { expiresIn: process.env.JWT_ACCESS_EXPIRATION_MINUTES };
+        return jwt.sign(data, process.env.JWT_ACCESS_SECRET, options);
     } catch (error) {
         console.error("Error signing refresh JWT:", error.message);
         throw new Error("Failed to sign refresh JWT");
@@ -61,16 +61,16 @@ const jwtAccessTokenSign = (data, expiresIn = "7d") => {
 
 const jwtAccessTokenDecode = (token) => {
     try {
-        return jwt.verify(token, process.env.JWT_SECRET_REFRESH);
+        return jwt.verify(token, process.env.JWT_ACCESS_SECRET);
     } catch (error) {
         console.error("Error decoding refresh JWT:", error.message);
         throw new Error("Failed to decode refresh JWT");
     }
 };
-const jwtRefreshTokenSign = (data, expiresIn = "7d") => {
+const jwtRefreshTokenSign = (data) => {
     try {
-        const options = { expiresIn };
-        return jwt.sign(data, process.env.JWT_SECRET_REFRESH, options);
+        const options = { expiresIn: process.env.JWT_REFRESH_EXPIRATION_DAYS };
+        return jwt.sign(data, process.env.JWT_REFRESH_SECRET, options);
     } catch (error) {
         console.error("Error signing refresh JWT:", error.message);
         throw new Error("Failed to sign refresh JWT");
@@ -79,7 +79,7 @@ const jwtRefreshTokenSign = (data, expiresIn = "7d") => {
 
 const jwtRefreshTokenDecode = (token) => {
     try {
-        return jwt.verify(token, process.env.JWT_SECRET_REFRESH);
+        return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
     } catch (error) {
         console.error("Error decoding refresh JWT:", error.message);
         throw new Error("Failed to decode refresh JWT");

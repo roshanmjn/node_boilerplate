@@ -21,6 +21,7 @@ if (process.env.NODE_ENV === "production") {
     };
 }
 
+console.log({ config });
 const DB = mysql2.createPool({
     host: config.host,
     user: config.user,
