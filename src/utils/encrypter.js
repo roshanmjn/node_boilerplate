@@ -38,7 +38,7 @@ const jwtSign = (payload, secret, expiresIn) => {
         return jwt.sign(payload, secret, { expiresIn: expiresIn });
     } catch (error) {
         console.error("Error signing JWT:", error.message);
-        throw new Error("Failed to sign JWT");
+        throw new HttpException(401, "Failed to sign JWT");
     }
 };
 const jwtDecode = (token, secret) => {
@@ -46,7 +46,7 @@ const jwtDecode = (token, secret) => {
         return jwt.verify(token, secret);
     } catch (error) {
         console.error("Error decoding JWT:", error.message);
-        throw new HttpException(401, "Failed to decode JWT");
+        throw new HttpException(400, "Failed to decode JWT");
     }
 };
 const jwtAccessTokenSign = (data) => {
@@ -55,7 +55,7 @@ const jwtAccessTokenSign = (data) => {
         return jwt.sign(data, process.env.JWT_ACCESS_SECRET, options);
     } catch (error) {
         console.error("Error signing refresh JWT:", error.message);
-        throw new Error("Failed to sign refresh JWT");
+        throw new HttpException(401, "Failed to sign refresh JWT");
     }
 };
 
@@ -64,7 +64,7 @@ const jwtAccessTokenDecode = (token) => {
         return jwt.verify(token, process.env.JWT_ACCESS_SECRET);
     } catch (error) {
         console.error("Error decoding refresh JWT:", error.message);
-        throw new Error("Failed to decode refresh JWT");
+        throw new HttpException(400, "Failed to decode access token");
     }
 };
 const jwtRefreshTokenSign = (data) => {
@@ -73,7 +73,7 @@ const jwtRefreshTokenSign = (data) => {
         return jwt.sign(data, process.env.JWT_REFRESH_SECRET, options);
     } catch (error) {
         console.error("Error signing refresh JWT:", error.message);
-        throw new Error("Failed to sign refresh JWT");
+        throw new HttpException(401, "Failed to sign refresh token");
     }
 };
 
@@ -82,7 +82,7 @@ const jwtRefreshTokenDecode = (token) => {
         return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
     } catch (error) {
         console.error("Error decoding refresh JWT:", error.message);
-        throw new Error("Failed to decode refresh JWT");
+        throw new HttpException(400, "Failed to decode refresh JWT");
     }
 };
 

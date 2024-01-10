@@ -1,21 +1,21 @@
 const httpStatus = require("http-status");
 const catchAsync = require("../../utils/catchAsync.js");
-const { authService, userService } = require("../../services/index.js");
+const { authService } = require("../../services/index.js");
 const { responseHandler } = require("../../utils/responseHandler.js");
 
 const register = catchAsync(async (req, res) => {
-    const user = await userService.createUser(req.body);
-    return res.status(httpStatus.CREATED).send({ user });
+    const user = await authService.register(req.body);
+    return res.status(httpStatus.CREATED).send(user);
 });
 
 const login = catchAsync(async (req, res) => {
-    const { email, password } = req.body;
-    const user = await authService.login(email, password);
-    res.cookie("access_token", user?.token, {
+    const { email, password, device_id } = req.body;
+    const user = await authService.login(email, password, device_id);
+    res.cookie("access_token", user?.access_token, {
         httpOnly: true,
         maxAge: 12 * 60 * 60 * 1000, // 12 hours
     });
-    res.cookie("refresh_token", user?.refreshToken, {
+    res.cookie("refresh_token", user?.refresh_token, {
         httpOnly: true,
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
@@ -23,49 +23,31 @@ const login = catchAsync(async (req, res) => {
 });
 
 const logout = catchAsync(async (req, res) => {
-    const refreshToken = req.body.refreshToken;
-    const user = await authService.logout(refreshToken);
-    if (user.message == "Logout successfully") {
-        res.clearCookie("access_token");
-        return res.status(httpStatus.OK).send("Logout successfully");
-    } else {
-        return res.status(httpStatus.BAD_REQUEST).send({ user });
-    }
+    const refreshToken = req.cookies.refresh_token;
+    const deviceId = req.headers.device_id;
+    const result = await authService.logout(refreshToken, deviceId);
+    return res.status(result.statusCode ?? httpStatus.OK).send(result);
 });
 
 const refreshTokens = catchAsync(async (req, res) => {
-    const tokens = await authService.refreshAuth(req.body.refreshToken);
-    res.send({ ...tokens });
-});
-
-const forgotPassword = catchAsync(async (req, res) => {
-    const { email } = req.body;
-    const user = await authService.forgotPassword(email);
-    res.send(user);
-});
-
-const resetPassword = catchAsync(async (req, res) => {
-    const { newpassword, token } = req.body;
-    console.log(newpassword);
-    const user = await authService.resetPassword(token, newpassword);
-    return res.send(user);
-});
-
-const verifyEmail = catchAsync(async (req, res) => {
-    const { token } = req.query;
-    console.log(token);
-    const user = await authService.verifyEmailToken(token);
-    console.log(user);
-    return res.redirect(process.env.APP_URL + `?status=${user.status}&email=${user.email}`);
+    console.log(req.cookies);
+    const refreshToken = req.cookies.refresh_token;
+    const deviceId = req.headers.device_id;
+    const tokens = await authService.refreshAccessToken(refreshToken, deviceId);
+    res.cookie("access_token", tokens?.access_token, {
+        httpOnly: true,
+        maxAge: 12 * 60 * 60 * 1000, // 12 hours
+    });
+    res.cookie("refresh_token", tokens?.refresh_token, {
+        httpOnly: true,
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+    return res.status(tokens.statusCode ?? httpStatus.OK).send(tokens);
 });
 
 module.exports = {
     register,
-    verifyEmail,
     login,
-    logout,
-    forgotPassword,
-    resetPassword,
-
     refreshTokens,
+    logout,
 };

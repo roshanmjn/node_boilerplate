@@ -1,5 +1,0 @@
----
-deployment:
-  tasks:
-    -export DEPLOYPATH=/home/gadgetsg/api-handler.byteperks.com/
-    -/bin/cp -R email $DEPLOYPATH

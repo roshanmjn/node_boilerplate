@@ -10,16 +10,23 @@ const password = (value, helpers) => {
         return helpers.message("password must be at least 8 characters");
     }
     if (!value.match(/\d/)) {
-        return helpers.message("password must contain at least 1 letter ");
+        return helpers.message("password must contain at least 1 number ");
     }
     if (!value.match(/[a-zA-Z]/)) {
-        return helpers.message("password must contain at least 1 number");
+        return helpers.message("password must contain at least 1 letter");
     }
 
+    return value;
+};
+const confirm_pass = (value, helpers) => {
+    if (value !== helpers.state.ancestors[0].password) {
+        return helpers.message("Passwords do not match");
+    }
     return value;
 };
 
 module.exports = {
     objectId,
     password,
+    confirm_pass,
 };
