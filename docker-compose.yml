@@ -1,0 +1,35 @@
+version: "3.2"
+
+services:
+  mysql-obspubg:
+    image: mysql:latest
+    container_name: mysql-obspubg-container
+    environment:
+      MYSQL_DATABASE: bimashco_obspubg
+      MYSQL_ROOT_PASSWORD: root
+    networks:
+      - obspubg
+    volumes:
+      - mysql-obspubg-data:/var/lib/mysql
+      - ./bimashco_obspubg.sql:/docker-entrypoint-initdb.d/bimashco_obspubg.sql
+    ports:
+      - "3306:3306"
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin-container
+    environment:
+      PMA_HOST: mysql-obspubg
+      PMA_PASSWORD: root
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql-obspubg
+    networks:
+      - obspubg
+volumes:
+  mysql-obspubg-data:
+
+networks:
+  obspubg:
+    driver: bridge
